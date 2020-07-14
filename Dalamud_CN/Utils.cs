@@ -7,6 +7,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Dalamud_CN
 {
@@ -42,8 +43,12 @@ namespace Dalamud_CN
         public static List<Process> GetGameProcess()
         {
             var list = new List<Process>();
-            list.AddRange(Process.GetProcessesByName("ffxiv"));
             list.AddRange(Process.GetProcessesByName("ffxiv_dx11"));
+            if(list.Count == 0)
+            {
+                var haveDx9 = Process.GetProcessesByName("ffxiv").Length > 0;
+                if (haveDx9) MessageBox.Show("请以DX11启动游戏!");
+            }
             return list;
         }
         public static string GetGameVersion(Process p)

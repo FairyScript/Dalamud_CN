@@ -138,9 +138,9 @@ namespace Dalamud_CN
             Process p = new Process();
             p.StartInfo.FileName = pluginPath + @"\Dalamud.Injector.exe";
             p.StartInfo.Arguments = $"{GameProcess.Id} {commandLine}";
-            p.EnableRaisingEvents = true;
             if (AutoExit)
             {
+                p.EnableRaisingEvents = true;
                 p.Exited += (_, ex) =>
                 {
                     Environment.Exit(0);
