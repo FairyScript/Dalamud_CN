@@ -21,7 +21,9 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
         <Label x:Name="label" Content="游戏进程" HorizontalAlignment="Left" Height="30" Margin="10,38,0,0" VerticalAlignment="Top" Width="60"/>
-        <CheckBox x:Name="checkBox_Copy" Content="自动注入" IsChecked="{Binding AutoInject}" HorizontalAlignment="Left" Margin="67,129,0,0" VerticalAlignment="Top"/>
+        <CheckBox x:Name="checkBox_Copy" Content="自动注入" IsChecked="{Binding AutoInject}" HorizontalAlignment="Left" Margin="67,129,0,0" VerticalAlignment="Top"
+                  Command="{Binding AutoInjectCommand}"
+                  CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}"/>
         <CheckBox x:Name="checkBox" Content="自动退出" IsChecked="{Binding AutoExit}" HorizontalAlignment="Left" Margin="67,150,0,0" VerticalAlignment="Top"/>
         <Button x:Name="button" Content="刷新" Command="{Binding RefreshListCommand}" HorizontalAlignment="Left" Height="30" Margin="188,38,0,0" VerticalAlignment="Top" Width="47"/>
         <Button x:Name="injectBtn" Content="注入灵魂" Command="{Binding InjectCommand}" IsEnabled="{Binding CanInject}" Height="54" Margin="67,181,67,0" VerticalAlignment="Top"/>

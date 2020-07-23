@@ -90,6 +90,62 @@ namespace Dalamud_CN
 
         public RelayCommand RefreshListCommand { get; set; }
         public RelayCommand InjectCommand { get; set; }
+        public RelayCommand<bool> AutoInjectCommand { get; set; }
+
+        Timer timer;
+        Timer injectTimer = new Timer
+        {
+            Interval = 2000,
+            AutoReset = false,
+        };
+
+        /// <summary>
+        /// Initializes a new instance of the MainViewModel class.
+        /// </summary>
+        public MainViewModel()
+        {
+            ////if (IsInDesignMode)
+            ////{
+            ////    // Code runs in Blend --> create design time data.
+            ////}
+            ////else
+            ////{
+            ////    // Code runs "for real"
+            ////}
+
+            //初始化Command
+            RefreshListCommand = new RelayCommand(FindGameProcess);
+            InjectCommand = new RelayCommand(StartInject);
+            AutoInjectCommand = new RelayCommand<bool>(isChecked => AutoInjectFunc(isChecked));
+
+            //初始化进程Timer
+            timer = new Timer
+            {
+                Interval = 500,
+                AutoReset = true
+            };
+            timer.Elapsed += (_, ee) => FindGameProcess();
+            timer.Start();
+
+            //初始化注入Timer
+            injectTimer.Elapsed += (_, ee) => StartInject();
+        }
+
+        private void AutoInjectFunc(bool isChecked)
+        {
+            if (isChecked)
+            {
+
+            }
+            else
+            {
+                injectTimer.Stop();
+            }
+        }
+
+        /// <summary>
+        /// 查找游戏进程方法
+        /// </summary>
         void FindGameProcess()
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -106,48 +162,17 @@ namespace Dalamud_CN
                     timer.Stop();
                     if (AutoInject)
                     {
-                        Task.Run(() =>
-                        {
-                            System.Threading.Thread.Sleep(2000);
-                            StartInject();
-                        });
+                        injectTimer.Start();
                     }
                 }
                 else
                 {
-                    if(!timer.Enabled) timer.Start();
+                    if (!timer.Enabled) timer.Start();
                 }
             });
-            
+
         }
 
-        Timer timer;
-
-        /// <summary>
-        /// Initializes a new instance of the MainViewModel class.
-        /// </summary>
-        public MainViewModel()
-        {
-            ////if (IsInDesignMode)
-            ////{
-            ////    // Code runs in Blend --> create design time data.
-            ////}
-            ////else
-            ////{
-            ////    // Code runs "for real"
-            ////}
-
-            RefreshListCommand = new RelayCommand(FindGameProcess);
-            InjectCommand = new RelayCommand(StartInject);
-
-            timer = new Timer
-            {
-                Interval = 500,
-                AutoReset = true
-            };
-            timer.Elapsed += (_, ee) => FindGameProcess();
-            timer.Start();
-        }
         private void StartInject()
         {
             var command = new InjectorCommand
@@ -174,6 +199,10 @@ namespace Dalamud_CN
             }
             p.Start();
         }
+
+        /// <summary>
+        /// 注入器的参数model
+        /// </summary>
         class InjectorCommand
         {
             public string WorkingDirectory { get; } = null;
