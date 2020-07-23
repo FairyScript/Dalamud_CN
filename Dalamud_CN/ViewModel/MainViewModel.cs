@@ -26,15 +26,31 @@ namespace Dalamud_CN
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
-        private bool auto = true;
+        //private bool autoExit = true;
         public bool AutoExit
         {
-            get => auto;
+            get => Properties.Settings.Default.AutoExit;
             set
             {
-                if (value != auto)
+                if (value != Properties.Settings.Default.AutoExit)
                 {
-                    auto = value;
+                    Properties.Settings.Default.AutoExit = value;
+                    Properties.Settings.Default.Save();
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        //private bool autoInject = false;
+        public bool AutoInject 
+        {
+            get => Properties.Settings.Default.AutoInject;
+            set
+            {
+                if (value != Properties.Settings.Default.AutoInject)
+                {
+                    Properties.Settings.Default.AutoInject = value;
+                    Properties.Settings.Default.Save();
                     RaisePropertyChanged();
                 }
             }
@@ -69,6 +85,9 @@ namespace Dalamud_CN
                 }
             }
         }
+
+        readonly string pluginPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
         public RelayCommand RefreshListCommand { get; set; }
         public RelayCommand InjectCommand { get; set; }
         void FindGameProcess()
@@ -85,10 +104,18 @@ namespace Dalamud_CN
                 {
                     GameProcess = GameList[0];
                     timer.Stop();
+                    if (AutoInject)
+                    {
+                        Task.Run(() =>
+                        {
+                            System.Threading.Thread.Sleep(2000);
+                            StartInject();
+                        });
+                    }
                 }
                 else
                 {
-                    timer.Start();
+                    if(!timer.Enabled) timer.Start();
                 }
             });
             
@@ -123,7 +150,6 @@ namespace Dalamud_CN
         }
         private void StartInject()
         {
-            var pluginPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             var command = new InjectorCommand
             {
                 ConfigurationPath = pluginPath + @"\XIVLauncher\dalamudConfig.json",
