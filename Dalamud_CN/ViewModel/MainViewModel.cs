@@ -87,7 +87,7 @@ namespace Dalamud_CN
             }
         }
 
-        readonly string pluginPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        readonly string pluginPath = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         public RelayCommand RefreshListCommand { get; set; }
         public RelayCommand InjectCommand { get; set; }
@@ -189,6 +189,13 @@ namespace Dalamud_CN
 
         private void StartInject()
         {
+            //监听游戏进程退出，重新搜索
+            Task.Run(() => GameProcess.WaitForExit()).ContinueWith(t =>
+            {
+                timer.Start();
+            });
+
+            //构建command line
             var command = new InjectorCommand
             {
                 ConfigurationPath = pluginPath + @"\XIVLauncher\dalamudConfig.json",
@@ -200,6 +207,7 @@ namespace Dalamud_CN
             var json = JsonConvert.SerializeObject(command);
             var commandLine = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
+            //启动Injector
             Process p = new Process();
             p.StartInfo.FileName = pluginPath + @"\Dalamud.Injector.exe";
             p.StartInfo.Arguments = $"{GameProcess.Id} {commandLine}";
