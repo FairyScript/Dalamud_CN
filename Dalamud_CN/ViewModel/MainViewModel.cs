@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
@@ -113,6 +114,9 @@ namespace Dalamud_CN
             ////    // Code runs "for real"
             ////}
 
+            //Title Version
+            Application.Current.MainWindow.Title += $" Ver {Assembly.GetExecutingAssembly().GetName().Version}";
+
             //初始化Command
             RefreshListCommand = new RelayCommand(FindGameProcess);
             InjectCommand = new RelayCommand(StartInject);
@@ -151,24 +155,34 @@ namespace Dalamud_CN
             Application.Current.Dispatcher.Invoke(() =>
             {
                 GameList.Clear();
-                foreach (var item in Utils.GetGameProcess())
+                try
                 {
-                    GameList.Add(item);
-                }
-
-                if (GameList.Count > 0)
-                {
-                    GameProcess = GameList[0];
-                    timer.Stop();
-                    if (AutoInject)
+                    foreach (var item in Utils.GetGameProcess())
                     {
-                        injectTimer.Start();
+                        GameList.Add(item);
+                    }
+
+                    if (GameList.Count > 0)
+                    {
+                        GameProcess = GameList[0];
+                        timer.Stop();
+                        if (AutoInject)
+                        {
+                            injectTimer.Start();
+                        }
+                    }
+                    else
+                    {
+                        if (!timer.Enabled) timer.Start();
                     }
                 }
-                else
+                catch (GameRunInDX9Exception)
                 {
-                    if (!timer.Enabled) timer.Start();
+                    timer.Stop();
+
+                    MessageBox.Show("请以DX11启动游戏!");
                 }
+
             });
 
         }

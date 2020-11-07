@@ -47,7 +47,10 @@ namespace Dalamud_CN
             if(list.Count == 0)
             {
                 var haveDx9 = Process.GetProcessesByName("ffxiv").Length > 0;
-                if (haveDx9) MessageBox.Show("请以DX11启动游戏!");
+                if (haveDx9)
+                {
+                    throw new GameRunInDX9Exception("Game run in dx9!");
+                }
             }
             return list;
         }

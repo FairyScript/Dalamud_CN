@@ -63,11 +63,12 @@ namespace Dalamud_CN_cli
                 ConfigurationPath = loadPath + @"\XIVLauncher\dalamudConfig.json",
                 PluginDirectory = loadPath + @"\XIVLauncher\installedPlugins",
                 DefaultPluginDirectory = loadPath + @"\XIVLauncher\devPlugins",
-                GameVersion = GetGameVersion(gameProcess)
+                GameVersion = GetGameVersion(gameProcess),
+                Language = lang
             };
             var json = JsonConvert.SerializeObject(command);
             var commandLine = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
-
+            Console.WriteLine(commandLine);
             Process p = new Process();
             p.StartInfo.FileName = pluginPath + @"\Dalamud.Injector.exe";
             p.StartInfo.UseShellExecute = false;
@@ -119,7 +120,7 @@ namespace Dalamud_CN_cli
         public string ConfigurationPath { get; set; }
         public string PluginDirectory { get; set; }
         public string DefaultPluginDirectory { get; set; }
-        public int Language { get; } = 4;
+        public ClientLanguage Language { get; set; } = ClientLanguage.Chinese;
         public string GameVersion { get; set; }
     }
 }
