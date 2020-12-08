@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Dalamud;
+using EasyHook;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,18 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Dalamud_CN_cli
 {
-    public enum ClientLanguage
-    {
-        Japanese,
-        English,
-        German,
-        French,
-        Chinese
-    }
 
     class Program
     {
@@ -26,10 +21,23 @@ namespace Dalamud_CN_cli
         {
             //init
             Process gameProcess;
+            var pid = -1;
+            if (args.Length >= 1)
+            {
+                try
+                {
+                    pid = Convert.ToInt32(args[0]);
+                }
+                catch
+                {
+                    throw new Exception("the first argument should be the pid of ffxiv game");
+                }
+
+            }
+
             try
             {
-                var pid = Convert.ToInt32(args[0]);
-                if(pid == -1)
+                if (pid == -1)
                 {
                     gameProcess = Process.GetProcessesByName("ffxiv_dx11")[0];
                 }
@@ -38,42 +46,63 @@ namespace Dalamud_CN_cli
                     gameProcess = Process.GetProcessById(pid);
                 }
             }
-            catch
+            catch (Exception)
             {
-                throw new Exception("the first argument should be the pid of ffxiv game");
+
+                throw new Exception("can not find ffxiv process");
+            }
+               
+
+            var lang = ClientLanguage.ChineseSimplified;
+            if (args.Length >= 2)
+            {
+                try
+                {
+                    lang = (ClientLanguage)Convert.ToInt32(args[1]);
+                }
+                catch
+                {
+                    throw new Exception("the second argument should be the language enum");
+                }
+            }
+                
+
+            // File check
+            var libPath = Path.GetFullPath("Dalamud.dll");
+            var pluginPath = Path.GetDirectoryName(libPath);
+
+            if (!File.Exists(libPath))
+            {
+                Console.WriteLine("can not find dalamud.dll");
+                return;
             }
 
-            var lang = ClientLanguage.Chinese;
-            try
-            {
-                lang = (ClientLanguage)Convert.ToInt32(args[1]);
-            }
-            catch
-            {
-                throw new Exception("the second argument should be the language enum");
-            }
-
-            var pluginPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             var xivLauncherPath = Environment.ExpandEnvironmentVariables(@"%appdata%");//国际服only
 
-            var loadPath = lang == ClientLanguage.Chinese ? pluginPath : xivLauncherPath;
+            var loadPath = lang == ClientLanguage.Japanese ? xivLauncherPath : pluginPath;
 
-            InjectorCommand command = new InjectorCommand
+            //构建command line
+            var command = new DalamudStartInfo
             {
+                WorkingDirectory = pluginPath,
                 ConfigurationPath = loadPath + @"\XIVLauncher\dalamudConfig.json",
                 PluginDirectory = loadPath + @"\XIVLauncher\installedPlugins",
                 DefaultPluginDirectory = loadPath + @"\XIVLauncher\devPlugins",
                 GameVersion = GetGameVersion(gameProcess),
                 Language = lang
             };
-            var json = JsonConvert.SerializeObject(command);
-            var commandLine = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
-            Console.WriteLine(commandLine);
-            Process p = new Process();
-            p.StartInfo.FileName = pluginPath + @"\Dalamud.Injector.exe";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.Arguments = $"{gameProcess.Id} {commandLine}";
-            p.Start();
+
+            CleanDalamudLog();
+
+            try
+            {
+                Thread.Sleep(500);
+                RemoteHooking.Inject(gameProcess.Id, InjectionOptions.DoNotRequireStrongName, libPath, libPath, command);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
 
         }
 
@@ -109,18 +138,25 @@ namespace Dalamud_CN_cli
             var gameDirectory = GetProcessPath(p.Id);
             return File.ReadAllText(Path.Combine(Path.GetDirectoryName(gameDirectory), "ffxivgame.ver"));
         }
-    }
 
-    /// <summary>
-    /// 注入器的参数model
-    /// </summary>
-    class InjectorCommand
-    {
-        public string WorkingDirectory { get; } = null;
-        public string ConfigurationPath { get; set; }
-        public string PluginDirectory { get; set; }
-        public string DefaultPluginDirectory { get; set; }
-        public ClientLanguage Language { get; set; } = ClientLanguage.Chinese;
-        public string GameVersion { get; set; }
+        private static void CleanDalamudLog()
+        {
+            var logpath = "dalamud.txt";
+            var logFileInfo = new FileInfo(logpath);
+            if (logFileInfo.Exists)
+            {
+                if (logFileInfo.Length > 5000000)
+                {
+                    try
+                    {
+                        File.Delete(logpath);
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+            }
+        }
     }
 }

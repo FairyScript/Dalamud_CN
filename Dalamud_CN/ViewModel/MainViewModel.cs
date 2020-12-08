@@ -2,17 +2,16 @@ using Dalamud;
 using EasyHook;
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.CommandWpf;
-using Newtonsoft.Json;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Dalamud_CN
 {
@@ -30,6 +29,7 @@ namespace Dalamud_CN
     /// </summary>
     public class MainViewModel : ViewModelBase
     {
+        #region define
         public bool AutoExit
         {
             get => Properties.Settings.Default.AutoExit;
@@ -58,6 +58,20 @@ namespace Dalamud_CN
             }
         }
 
+        private bool canInject = false;
+        public bool CanInject
+        {
+            get => canInject;
+            set
+            {
+                if (value != canInject)
+                {
+                    canInject = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
         public ObservableCollection<Process> GameList { get; set; } = new ObservableCollection<Process>();
 
         private Process game;
@@ -70,25 +84,29 @@ namespace Dalamud_CN
                 {
                     game = value;
                     RaisePropertyChanged();
+                    CanInject = (value != null);
+                    WatchGame();
                 }
             }
         }
 
 
-        readonly string pluginPath = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         public RelayCommand RefreshListCommand { get; set; }
         public RelayCommand InjectCommand { get; set; }
         public RelayCommand<bool> AutoInjectCommand { get; set; }
 
-        Timer timer;
-        Timer injectTimer = new Timer
+        System.Timers.Timer timer;
+        System.Timers.Timer injectTimer = new System.Timers.Timer
         {
             Interval = 2000,
             AutoReset = false,
         };
 
         Task gameWatchDog;
+        CancellationTokenSource token;
+
+        #endregion
 
         /// <summary>
         /// Initializes a new instance of the MainViewModel class.
@@ -113,7 +131,7 @@ namespace Dalamud_CN
             AutoInjectCommand = new RelayCommand<bool>(isChecked => AutoInjectFunc(isChecked));
 
             //初始化进程Timer
-            timer = new Timer
+            timer = new System.Timers.Timer
             {
                 Interval = 500,
                 AutoReset = true
@@ -123,6 +141,44 @@ namespace Dalamud_CN
 
             //初始化注入Timer
             injectTimer.Elapsed += (_, ee) => StartInject();
+
+            //尝试清理log file
+            Task.Run(() => CleanDalamudLog());
+
+        }
+
+        private void CleanDalamudLog()
+        {
+            var logpath = "dalamud.txt";
+            var logFileInfo = new FileInfo(logpath);
+            if (logFileInfo.Exists)
+            {
+                if(logFileInfo.Length > 5000000)
+                {
+                    try
+                    {
+                        File.Delete(logpath);
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Watch Dog
+        /// </summary>
+        private void WatchGame()
+        {
+            if (gameWatchDog != null && !gameWatchDog.IsCompleted) token.Cancel();
+            if (GameProcess == null) return;
+            token = new CancellationTokenSource();
+            gameWatchDog = Task.Run(() => GameProcess.WaitForExit()).ContinueWith(t =>
+            {
+                timer.Start();
+            }, token.Token);
         }
 
         private void AutoInjectFunc(bool isChecked)
@@ -181,48 +237,39 @@ namespace Dalamud_CN
         {
             // File check
             var libPath = Path.GetFullPath("Dalamud.dll");
+            var pluginPath = Path.GetDirectoryName(libPath);
+
             if (!File.Exists(libPath))
             {
-                Console.WriteLine($"Can't find a dll on {libPath}");
+                MessageBox.Show($"Can't find a dll on {libPath}");
                 return;
             }
 
             //构建command line
             var command = new DalamudStartInfo
             {
-                WorkingDirectory = null,
+                WorkingDirectory = pluginPath,
                 ConfigurationPath = pluginPath + @"\XIVLauncher\dalamudConfig.json",
                 PluginDirectory = pluginPath + @"\XIVLauncher\installedPlugins",
                 DefaultPluginDirectory = pluginPath + @"\XIVLauncher\devPlugins",
                 GameVersion = Utils.GetGameVersion(GameProcess),
                 Language = ClientLanguage.ChineseSimplified
             };
-
-            RemoteHooking.Inject(GameProcess.Id, InjectionOptions.DoNotRequireStrongName, libPath, libPath, command);
+            
+            try
+            {
+                RemoteHooking.Inject(GameProcess.Id, InjectionOptions.DoNotRequireStrongName, libPath, libPath, command);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.StackTrace);
+            }
 
             if (AutoExit)
             {
                 Environment.Exit(0);
             }
 
-            if (gameWatchDog != null) gameWatchDog.Dispose();
-            gameWatchDog = Task.Run(() => GameProcess.WaitForExit()).ContinueWith(t =>
-            {
-                timer.Start();
-            });
-        }
-
-        /// <summary>
-        /// 注入器的参数model
-        /// </summary>
-        class InjectorCommand
-        {
-            public string WorkingDirectory { get; } = null;
-            public string ConfigurationPath { get; set; }
-            public string PluginDirectory { get; set; }
-            public string DefaultPluginDirectory { get; set; }
-            public int Language { get; } = 4;
-            public string GameVersion { get; set; }
         }
 
     }
