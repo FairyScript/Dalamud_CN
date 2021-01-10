@@ -26,7 +26,15 @@ namespace Dalamud_CN_cli
             {
                 try
                 {
-                    pid = Convert.ToInt32(args[0]);
+                    var argPid = args[0];
+                    if (argPid.StartsWith("0x"))
+                    {
+                        pid = Convert.ToInt32(args[0],16);
+                    }
+                    else
+                    {
+                        pid = Convert.ToInt32(args[0]);
+                    }
                 }
                 catch
                 {
