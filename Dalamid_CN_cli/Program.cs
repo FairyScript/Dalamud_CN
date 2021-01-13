@@ -19,6 +19,12 @@ namespace Dalamud_CN_cli
 
         static void Main(string[] args)
         {
+            //check work path
+            var filePath = AppDomain.CurrentDomain.BaseDirectory;
+            var workPath = Directory.GetCurrentDirectory()+ @"\";
+
+            if (filePath != workPath) Directory.SetCurrentDirectory(filePath);
+
             //init
             Process gameProcess;
             var pid = -1;
