@@ -19,12 +19,13 @@ namespace Dalamud_CN_cli
 
         static void Main(string[] args)
         {
+#if !DEBUG
             //check work path
             var filePath = AppDomain.CurrentDomain.BaseDirectory;
             var workPath = Directory.GetCurrentDirectory()+ @"\";
 
             if (filePath != workPath) Directory.SetCurrentDirectory(filePath);
-
+#endif
             //init
             Process gameProcess;
             var pid = -1;
@@ -58,14 +59,14 @@ namespace Dalamud_CN_cli
                 else
                 {
                     gameProcess = Process.GetProcessById(pid);
+                    if (gameProcess.ProcessName != "ffxiv_dx11") throw new Exception("the pid is invalid");
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
-                throw new Exception("can not find ffxiv process");
+                throw e;
             }
-               
+
 
             var lang = ClientLanguage.ChineseSimplified;
             if (args.Length >= 2)
@@ -79,7 +80,18 @@ namespace Dalamud_CN_cli
                     throw new Exception("the second argument should be the language enum");
                 }
             }
-                
+#if !DEBUG
+            //检查是否已经被注入
+            foreach(ProcessModule module in gameProcess.Modules)
+            {
+                if(module.ModuleName == "EasyHook64.dll")
+                {
+                    Console.WriteLine($"gameProcess {gameProcess.Id} has been injected");
+                    Environment.Exit(0);
+                }
+            }
+#endif
+
 
             // File check
             var libPath = Path.GetFullPath("Dalamud.dll");
@@ -102,12 +114,16 @@ namespace Dalamud_CN_cli
                 ConfigurationPath = loadPath + @"\XIVLauncher\dalamudConfig.json",
                 PluginDirectory = loadPath + @"\XIVLauncher\installedPlugins",
                 DefaultPluginDirectory = loadPath + @"\XIVLauncher\devPlugins",
+                AssetDirectory = pluginPath + @"\XIVLauncher\dalamudAssets",
                 GameVersion = GetGameVersion(gameProcess),
                 Language = lang
             };
 
-            CleanDalamudLog();
+            //clean dalamud log
+            Task.Run(() => CleanDalamudLog());
 
+
+            // Inject
             try
             {
                 Thread.Sleep(500);

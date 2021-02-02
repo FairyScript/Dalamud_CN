@@ -244,6 +244,15 @@ namespace Dalamud_CN
                 MessageBox.Show($"Can't find a dll on {libPath}");
                 return;
             }
+            //检查是否已经被注入
+            foreach (ProcessModule module in GameProcess.Modules)
+            {
+                if (module.ModuleName == "EasyHook64.dll")
+                {
+                    Console.WriteLine($"gameProcess {GameProcess.Id} has been injected");
+                    return;
+                }
+            }
 
             //构建command line
             var command = new DalamudStartInfo
@@ -252,6 +261,7 @@ namespace Dalamud_CN
                 ConfigurationPath = pluginPath + @"\XIVLauncher\dalamudConfig.json",
                 PluginDirectory = pluginPath + @"\XIVLauncher\installedPlugins",
                 DefaultPluginDirectory = pluginPath + @"\XIVLauncher\devPlugins",
+                AssetDirectory = pluginPath + @"\XIVLauncher\dalamudAssets",
                 GameVersion = Utils.GetGameVersion(GameProcess),
                 Language = ClientLanguage.ChineseSimplified
             };
