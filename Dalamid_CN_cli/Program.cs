@@ -105,7 +105,7 @@ namespace Dalamud_CN_cli
 
             var xivLauncherPath = Environment.ExpandEnvironmentVariables(@"%appdata%");//国际服only
 
-            var loadPath = lang == ClientLanguage.Japanese ? xivLauncherPath : pluginPath;
+            var loadPath = lang == ClientLanguage.ChineseSimplified ? pluginPath : xivLauncherPath;
 
             //构建command line
             var command = new DalamudStartInfo
